@@ -1,0 +1,164 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Night Clock</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #clock {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #time {
+    font-family: "SF Mono", "Menlo", "Courier New", monospace;
+    font-size: 33vh;
+    line-height: 1;
+    color: #ff0000;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 2vw rgba(255, 0, 0, 0.25);
+  }
+  #date {
+    margin-top: 3vh;
+    font-family: "SF Mono", "Menlo", "Courier New", monospace;
+    font-size: 5vh;
+    color: #b30000;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Black overlay used as the brightness dimmer */
+  #dimmer {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    pointer-events: none;
+    opacity: 0.85; /* starts at minimum brightness */
+  }
+  #hint {
+    position: fixed;
+    bottom: max(2vh, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: system-ui, sans-serif;
+    font-size: 2.2vh;
+    color: #555;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  #hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <div id="clock">
+    <div id="time">--:--:--</div>
+    <div id="date"></div>
+  </div>
+  <div id="dimmer"></div>
+  <div id="hint">Swipe up = brighter &nbsp;·&nbsp; Swipe down = dimmer &nbsp;·&nbsp; Double-tap = reset</div>
+
+<script>
+(function () {
+  var timeEl = document.getElementById("time");
+  var dateEl = document.getElementById("date");
+  var dimmer = document.getElementById("dimmer");
+  var hint = document.getElementById("hint");
+
+  var MIN_OPACITY = 0.85; // minimum brightness (darkest dimmer)
+  var MAX_OPACITY = 0.0;  // maximum brightness (dimmer fully clear)
+  var START_OPACITY = MIN_OPACITY;
+  var STEP = 0.12; // brightness change per screen-height swiped
+  var opacity = START_OPACITY;
+  var s0 = null;
+  var o0 = null;
+  var hintTimer = null;
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  function tick() {
+    var d = new Date();
+    var t = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+    if (timeEl.textContent !== t) timeEl.textContent = t;
+    var ds = DAYS[d.getDay()] + ", " + pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear();
+    if (dateEl.textContent !== ds) dateEl.textContent = ds;
+  }
+  tick();
+  setInterval(tick, 250);
+
+  function apply() {
+    if (opacity < MIN_OPACITY) opacity = MIN_OPACITY;
+    if (opacity > MAX_OPACITY) opacity = MAX_OPACITY;
+    dimmer.style.opacity = opacity;
+  }
+
+  function showHint() {
+    hint.classList.add("show");
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(function () { hint.classList.remove("show"); }, 3000);
+  }
+
+  function swipeStart(x, y) { s0 = { x: x, y: y }; o0 = opacity; showHint(); }
+  function swipeMove(x, y) {
+    if (s0 === null) return;
+    var h = window.innerHeight || 1;
+    var dy = (y - s0.y) / h; // negative if swiping up
+    opacity = o0 - dy * STEP; // up (dy<0) increases brightness
+    apply();
+  }
+  function swipeEnd() { s0 = null; }
+
+  // Touch (iPad)
+  document.addEventListener("touchstart", function (e) {
+    if (e.touches.length === 1) swipeStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (e.touches.length === 1) swipeMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  document.addEventListener("touchend", swipeEnd, { passive: true });
+
+  // Prevent double-tap zoom and pull-to-refresh
+  var lastTouchEnd = 0;
+  document.addEventListener("touchend", function (e) {
+    var now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Mouse (desktop preview)
+  document.addEventListener("mousedown", function (e) { swipeStart(e.clientX, e.clientY); });
+  document.addEventListener("mousemove", function (e) { if (o0 !== null) swipeMove(e.clientX, e.clientY); });
+  document.addEventListener("mouseup", function () { o0 = null; swipeEnd(); });
+
+  // Double-tap resets to minimum brightness
+  var lastTap = 0;
+  document.addEventListener("touchend", function () {
+    var now = Date.now();
+    if (now - lastTap < 350) { opacity = START_OPACITY; apply(); showHint(); }
+    lastTap = now;
+  });
+
+  apply();
+  showHint();
+})();
+</script>
+</body>
+</html>
