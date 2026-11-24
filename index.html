@@ -95,9 +95,8 @@
     if (b > B_MAX) b = B_MAX;
     timeEl.style.color = "rgba(255, 0, 0, " + b.toFixed(3) + ")";
     timeEl.style.textShadow = "0 0 0.35em rgba(255, 0, 0, " + (0.3 * b).toFixed(3) + ")";
-    // date gets a boost so it stays readable even at minimum brightness
-    var db = Math.min(1, b + 0.30);
-    dateEl.style.color = "rgba(255, 48, 48, " + db.toFixed(3) + ")";
+    // date follows the exact same brightness as the time
+    dateEl.style.color = "rgba(255, 0, 0, " + b.toFixed(3) + ")";
   }
 
   var hintTimer = null;
